@@ -22,6 +22,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     ApiResponse<Void> invalidFields(MethodArgumentNotValidException exception) {
+        log.warn("request rejected reason=input_validation status=400");
         List<ApiError> errors = exception.getBindingResult().getFieldErrors().stream()
             .map(error -> new ApiError(error.getField(), error.getDefaultMessage()))
             .distinct().toList();
@@ -31,18 +32,21 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     ApiResponse<Void> unreadableBody() {
+        log.warn("request rejected reason=unreadable_body status=400");
         return ApiResponse.failure("Request body không hợp lệ", List.of(new ApiError("request", "Không thể đọc dữ liệu JSON")));
     }
 
     @ExceptionHandler(DuplicateUsernameException.class)
     @ResponseStatus(HttpStatus.CONFLICT)
     ApiResponse<Void> duplicateUsername(DuplicateUsernameException exception) {
+        log.warn("request rejected reason=duplicate_username status=409");
         return ApiResponse.failure(exception.getMessage(), List.of(new ApiError("username", exception.getMessage())));
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     @ResponseStatus(HttpStatus.CONFLICT)
     ApiResponse<Void> integrityConflict() {
+        log.warn("request rejected reason=data_integrity_conflict status=409");
         String message = "Dữ liệu bị trùng hoặc vi phạm ràng buộc";
         return ApiResponse.failure(message, List.of(new ApiError("username", message)));
     }
@@ -50,24 +54,34 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AuthenticationException.class)
     @ResponseStatus(HttpStatus.UNAUTHORIZED)
     ApiResponse<Void> invalidCredentials() {
+        log.warn("request rejected reason=invalid_credentials status=401");
         return ApiResponse.failure("Tên đăng nhập hoặc mật khẩu không đúng", List.of(new ApiError("credentials", "Thông tin đăng nhập không hợp lệ")));
     }
 
     @ExceptionHandler(AccessDeniedException.class)
     @ResponseStatus(HttpStatus.FORBIDDEN)
     ApiResponse<Void> forbidden() {
+        log.warn("request rejected reason=forbidden status=403");
         return ApiResponse.failure("Không được phép truy cập", List.of(new ApiError("authorization", "Bạn không có quyền truy cập tài nguyên này")));
     }
 
     @ExceptionHandler(NoSuchElementException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
     ApiResponse<Void> missingResource() {
+        log.warn("request rejected reason=resource_not_found status=404");
         return ApiResponse.failure("Không tìm thấy tài nguyên", List.of(new ApiError("resource", "Tài nguyên không tồn tại")));
     }
 
     @ExceptionHandler(ResponseStatusException.class)
     org.springframework.http.ResponseEntity<ApiResponse<Void>> responseStatus(ResponseStatusException exception) {
-        String message = exception.getReason() == null ? exception.getStatusCode().toString() : exception.getReason();
+        HttpStatus status = HttpStatus.resolve(exception.getStatusCode().value());
+        String message = status == HttpStatus.NOT_FOUND ? "Không tìm thấy tài nguyên"
+            : status == HttpStatus.BAD_REQUEST ? "Yêu cầu không hợp lệ"
+            : status == HttpStatus.UNAUTHORIZED ? "Chưa xác thực"
+            : status == HttpStatus.FORBIDDEN ? "Không được phép truy cập"
+            : "Yêu cầu không thể xử lý";
+        if (exception.getStatusCode().is5xxServerError()) log.error("request failed status={}", exception.getStatusCode().value(), exception);
+        else log.warn("request rejected status={}", exception.getStatusCode().value());
         return org.springframework.http.ResponseEntity.status(exception.getStatusCode()).body(ApiResponse.failure(message, List.of(new ApiError("request", message))));
     }
 
