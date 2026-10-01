@@ -8,7 +8,7 @@ Spring Boot 3 / Spring Security 6 demo using Nimbus JOSE + JWT 10.10.
 mvn spring-boot:run
 ```
 
-Mở `http://localhost:8005/login.html`. Hai project cùng dùng cổng `8005`; chỉ chạy một bản tại một thời điểm.
+Mở `http://localhost:8005/login`. Trang hồ sơ là `http://localhost:8005/user/profile`. Hai project cùng dùng cổng `8005`; chỉ chạy một bản tại một thời điểm.
 
 # API response
 
@@ -34,7 +34,20 @@ Automated API tests dùng H2 tạm thời, không cần khởi động SQL Serve
 mvn test
 ```
 
-Test bao phủ đăng ký hợp lệ/không hợp lệ, chuẩn hóa username, giới hạn BCrypt, username trùng, đăng nhập sai, token thiếu/sai và API hồ sơ/danh sách với token hợp lệ.
+Test bao phủ đăng ký hợp lệ/không hợp lệ, chuẩn hóa username, giới hạn BCrypt, username trùng, đăng nhập sai, token thiếu/sai, API hồ sơ/danh sách với token hợp lệ, và trang Thymeleaf cùng CSS/JavaScript/jQuery WebJar.
+
+# Kiểm thử trình duyệt
+
+Từ thư mục gốc repository, cài dependency một lần và chạy Playwright cho cả JJWT và Nimbus:
+
+```powershell
+cd e2e
+npm ci
+npx playwright install chromium
+npm test
+```
+
+E2E khởi chạy project này bằng `-Pe2e` với database H2 riêng, không dùng SQL Server. Để chỉ chạy Nimbus: `$env:JWT_VARIANT='nimbus'; npm run test:variant`.
 
 # Thử API thủ công
 

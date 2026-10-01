@@ -12,7 +12,7 @@ Hai project triển khai cùng một demo đăng ký, đăng nhập và xác th�
 - Đăng ký tài khoản, lưu mật khẩu dưới dạng BCrypt; tài khoản mới có quyền `USER`.
 - Đăng nhập bằng username/password, cấp JWT HS256 có thời hạn cấu hình.
 - Bảo vệ `GET /users/me` và `GET /users` bằng header `Authorization: Bearer <token>`.
-- Giao diện đăng nhập/đăng ký tại `/login.html` và hồ sơ người dùng tại `/profile.html`; giao diện gọi API và lưu token trong `localStorage`.
+- Giao diện Thymeleaf tại `/login` và `/user/profile`; jQuery AJAX gọi API và giữ Bearer token trong `localStorage`.
 - Dùng SQL Server và bảng `dbo.users`. Chạy [JWT-DB-Seed.sql](JWT-DB-Seed.sql) trong SQL Server Management Studio để tạo database `jwt_springboot3` cùng tài khoản mẫu **demo / JwtDemo123!**.
 
 ## API response thống nhất
@@ -51,13 +51,26 @@ mvn spring-boot:run
 
 Đổi `JWT-JJWT` thành `JWT-Nimbus` để chạy phiên bản Nimbus. Hai ứng dụng cùng dùng cổng `8005`, nên chạy từng phiên bản một. Nếu SQL Server không dùng cấu hình mặc định, xem README riêng của project để đặt `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` và `JWT_SECRET`.
 
-Chạy automated API tests trong thư mục project:
+Chạy automated API và trang-template tests trong thư mục project:
 
 ```powershell
 mvn test
 ```
 
-Test dùng H2 tạm thời, không cần SQL Server. Các test bao gồm validation và chuẩn hóa username, username trùng, đăng nhập sai, response lỗi 401/403, và gọi các API được bảo vệ bằng token hợp lệ.
+Test dùng H2 tạm thời, không cần SQL Server. Các test bao gồm validation và chuẩn hóa username, username trùng, đăng nhập sai, response lỗi 401/403, gọi API được bảo vệ bằng token hợp lệ, và render các trang cùng tài nguyên UI.
+
+### Kiểm thử trên trình duyệt
+
+Cần cài Node.js và Chromium cho Playwright. Từ thư mục gốc repo:
+
+```powershell
+cd e2e
+npm ci
+npx playwright install chromium
+npm test
+```
+
+Playwright chạy từng project tuần tự trên cổng `8005`, khởi động với profile Maven `e2e` và H2 riêng. Không kết nối hoặc thay đổi SQL Server. Test bao phủ đăng ký, lỗi đăng nhập/username trùng, Bearer token, hồ sơ, danh sách người dùng, đăng xuất, token thiếu/sai, màn hình nhỏ và reduced motion.
 
 ## Hướng dẫn riêng từng bản
 
