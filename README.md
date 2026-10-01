@@ -15,36 +15,62 @@ Hai project triển khai cùng một demo đăng ký, đăng nhập và xác th�
 - Giao diện Thymeleaf tại `/login` và `/user/profile`; jQuery AJAX gọi API và giữ Bearer token trong `localStorage`.
 - Dùng SQL Server và bảng `dbo.users`. Chạy [JWT-DB-Seed.sql](JWT-DB-Seed.sql) trong SQL Server Management Studio để tạo database `jwt_springboot3` cùng tài khoản mẫu **demo / JwtDemo123!**.
 
-## API response thống nhất
+## Nội dung đã triển khai ở cả hai phiên bản
 
-Mọi endpoint API trả cùng envelope; dữ liệu thành công nằm trong `data`, kể cả danh sách người dùng:
+Hai project dùng chung API, quy tắc input, cấu trúc response và giao diện. Điểm khác nhau chủ yếu là thư viện tạo/xác minh JWT: JJWT trong `JWT-JJWT` và Nimbus trong `JWT-Nimbus`.
+
+### 1. Response thống nhất
+
+Mọi API đều trả cùng một cấu trúc JSON. Khi thành công, kết quả nằm trong `data`; danh sách người dùng cũng không trả thành mảng ở root:
 
 ```json
 {
   "success": true,
-  "message": "Đăng nhập thành công",
-  "data": {
-    "token": "<jwt>",
-    "tokenType": "Bearer",
-    "expiresAt": 1790000000000
-  },
+  "message": "Lấy hồ sơ thành công",
+  "data": { "id": 1, "username": "demo", "role": "USER" },
   "errors": []
 }
 ```
 
-Khi lỗi, `success` là `false`, `data` là `null`, còn `errors` chứa `field` và `message`. Status chính: `400` input không hợp lệ, `401` sai thông tin đăng nhập hoặc token, `403` không đủ quyền, `409` username bị trùng.
+Khi có lỗi, `data` bằng `null`, còn `errors` là danh sách gồm `field` và `message`. Frontend đọc cùng một envelope cho đăng nhập, đăng ký, hồ sơ, danh sách user và lỗi.
 
-Exception trong API được ánh xạ tập trung về envelope này; lỗi máy chủ ngoài dự kiến trả thông báo chung, không gửi stack trace hay nội dung database về client. Mỗi request được log với timestamp, mức độ, HTTP method, path, status và correlation ID. ID được trả trong header `X-Correlation-ID` (client có thể gửi ID hợp lệ để tiện tra cứu). Không ghi password, token JWT hay nội dung request vào log. Log console dùng Logback có sẵn của Spring Boot; chưa cấu hình dịch vụ thu thập log ngoài.
+### 2. Kiểm tra dữ liệu đầu vào
 
-## API Docs
+Validation được khai báo trên DTO request bằng Jakarta Bean Validation, kèm validator riêng để kiểm tra giới hạn BCrypt:
 
-Cả hai project sinh OpenAPI tự động và cung cấp Swagger UI để xem/thử endpoint. Khi ứng dụng đang chạy, mở `http://localhost:8005/swagger-ui/index.html`; hướng dẫn gọi API và xác thực Bearer nằm trong [docs/API.md](docs/API.md). Tệp OpenAPI JSON được cung cấp tại `/v3/api-docs`.
+- **Username đăng ký:** trim khoảng trắng ngoài, chuẩn hóa chữ thường trước khi lưu; từ 3–30 ký tự; chỉ nhận chữ ASCII, số, dấu chấm và gạch dưới.
+- **Password đăng ký:** từ 8–72 ký tự, có ít nhất một chữ cái và một chữ số; không trim; kiểm tra không quá 72 byte UTF-8 để BCrypt không cắt password.
+- **Đăng nhập:** username/password không được rỗng; không áp lại yêu cầu độ mạnh password đăng ký để tài khoản cũ vẫn đăng nhập được.
 
-## Quy tắc input
+Lỗi validation được gom về một nơi và trả `400` cùng danh sách lỗi theo field để giao diện hiển thị.
 
-- Username đăng ký được trim, chuyển thành chữ thường, dài 3–30 ký tự; chỉ chấp nhận chữ ASCII, số, dấu chấm và gạch dưới.
-- Password đăng ký dài 8–72 ký tự, có ít nhất một chữ và một số, không bị trim và không vượt 72 byte UTF-8 để tránh BCrypt cắt chuỗi.
-- Đăng nhập yêu cầu username/password không rỗng; không áp lại độ mạnh password của bước đăng ký.
+### 3. Xử lý lỗi tập trung
+
+`@RestControllerAdvice` xử lý lỗi validation, JSON không đọc được, username trùng, lỗi xác thực, thiếu quyền, không tìm thấy tài nguyên và exception ngoài dự kiến. Lỗi ngoài dự kiến trả `500` với thông báo an toàn; stack trace và chi tiết database chỉ ghi ở server, không gửi cho client. Error controller cũng chuyển lỗi servlet sang cùng envelope.
+
+Các HTTP status chính: `400` dữ liệu sai, `401` thông tin đăng nhập hoặc token không hợp lệ, `403` không đủ quyền, `404` không tìm thấy tài nguyên, `409` username trùng và `500` lỗi máy chủ.
+
+### 4. Logging và mã đối chiếu request
+
+Hai backend dùng SLF4J/Logback có sẵn của Spring Boot. Log console có timestamp, mức log, HTTP method, path, status và correlation ID. Request thành công ghi `INFO`, request bị từ chối ghi `WARN`, lỗi máy chủ ghi `ERROR` kèm stack trace phía server.
+
+Mỗi response có header `X-Correlation-ID`; có thể dùng mã này để tìm log của request tương ứng. Password, JWT và nội dung body không được ghi vào log. Hiện project ghi log ra console, chưa nối ELK/Grafana Loki.
+
+### 5. API Docs và bảo vệ API
+
+Springdoc sinh tài liệu OpenAPI tự động từ controller. Swagger UI có thể dùng để xem và thử API; endpoint `/users/me` và `/users` được mô tả cần Bearer JWT. Sau khi đăng nhập, dùng **Authorize** trong Swagger UI với token nhận từ `data.token`.
+
+- Swagger UI: `http://localhost:8005/swagger-ui/index.html`
+- OpenAPI JSON: `http://localhost:8005/v3/api-docs`
+- Hướng dẫn tiếng Việt: [docs/API.md](docs/API.md)
+
+API đăng ký và đăng nhập là công khai. API hồ sơ và danh sách user cần `Authorization: Bearer <token>`. Mật khẩu được lưu bằng BCrypt; backend chạy stateless.
+
+### 6. Giao diện và kiểm thử
+
+Giao diện hai bản dùng Thymeleaf, jQuery AJAX và CSS responsive. Có đăng nhập/đăng ký, hiển thị lỗi theo field, hồ sơ và danh sách user, trạng thái tải/lỗi/rỗng và đăng xuất.
+
+Automated API/page tests chạy bằng H2 riêng; Playwright kiểm tra luồng giao diện trên cả JJWT và Nimbus bằng H2 E2E. Các bước chạy nằm ở phần [Chạy và kiểm tra](#chạy-và-kiểm-tra).
 
 ## Chạy và kiểm tra
 
