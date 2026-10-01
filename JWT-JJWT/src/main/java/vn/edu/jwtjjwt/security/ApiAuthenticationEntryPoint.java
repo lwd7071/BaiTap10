@@ -8,6 +8,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.AuthenticationEntryPoint;
@@ -15,9 +17,11 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class ApiAuthenticationEntryPoint implements AuthenticationEntryPoint {
+    private static final Logger log = LoggerFactory.getLogger(ApiAuthenticationEntryPoint.class);
     private final ObjectMapper mapper;
     public ApiAuthenticationEntryPoint(ObjectMapper mapper) { this.mapper = mapper; }
     @Override public void commence(HttpServletRequest request, HttpServletResponse response, AuthenticationException exception) throws IOException, ServletException {
+        log.warn("authentication rejected status=401");
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding("UTF-8");
