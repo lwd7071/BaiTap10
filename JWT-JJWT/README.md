@@ -1,51 +1,52 @@
 # JWT-JJWT
 
-Bản demo Spring Boot 3 / Spring Security 6 theo bài giảng, sử dụng JJWT 0.12.6 để ký và xác thực JWT.
+Spring Boot 3 / Spring Security 6 demo using JJWT 0.12.6.
 
-## Chức năng
-- Đăng ký và đăng nhập; mật khẩu mới được băm bằng BCrypt.
-- Tạo token HS256 có thời hạn cấu hình.
-- Bảo vệ `GET /users/me` và `GET /users` bằng `Authorization: Bearer <token>`.
-- Giao diện tại `/login.html` và `/profile.html`, gọi API bằng JavaScript.
-- Kết nối SQL Server.
-
-## Chuẩn bị database
-1. Mở `../JWT-DB-Seed.sql` trong SQL Server Management Studio và chạy script. Script tạo database `jwt_springboot3`, bảng `dbo.users` và tài khoản mẫu.
-2. Tài khoản mẫu: **demo / JwtDemo123!**.
-3. Mặc định ứng dụng kết nối `localhost:1433` với SQL Login `sa`. Nếu SQL Server của bạn khác, cấu hình biến môi trường trong PowerShell trước khi chạy:
-
-```powershell
-$env:DB_URL = 'jdbc:sqlserver://localhost:1433;databaseName=jwt_springboot3;encrypt=true;trustServerCertificate=true'
-$env:DB_USERNAME = 'sa'
-$env:DB_PASSWORD = 'mật-khẩu-SQL-Server-của-bạn'
-$env:JWT_SECRET = 'thay-bằng-một-chuỗi-bí-mật-ngẫu-nhiên-dài-trên-32-byte'
-```
-
-Nếu dùng SQL Server Express, thay URL bằng instance/port phù hợp, ví dụ `jdbc:sqlserver://localhost;instanceName=SQLEXPRESS;databaseName=jwt_springboot3;encrypt=true;trustServerCertificate=true`. `trustServerCertificate=true` phù hợp cho môi trường học tập/local khi dùng chứng thư tự ký; triển khai thật nên cấu hình và xác thực chứng thư TLS.
-
-## Chạy ứng dụng
-Từ thư mục `JWT-JJWT`:
+# BACKEND
 
 ```powershell
 mvn spring-boot:run
 ```
 
-Mở `http://localhost:8005/login.html`. Hai project đều dùng cổng 8005 nên chạy từng bản một.
+Mở `http://localhost:8005/login.html`. Hai project cùng dùng cổng `8005`; chỉ chạy một bản tại một thời điểm.
 
-## Chạy test
-Chạy giai đoạn test của Maven từ thư mục project:
+# API response
+
+Mọi endpoint API dùng cùng cấu trúc:
+
+```json
+{"success":true,"message":"...","data":{},"errors":[]}
+```
+
+Khi có lỗi, `success` là `false`, `data` là `null`, `errors` chứa `field` và `message`. Danh sách `/users` được trả trong `data`.
+
+# Input validation
+
+- Username đăng ký: trim, chuyển thành chữ thường; từ 3–30 ký tự, chỉ gồm chữ ASCII, số, dấu chấm và gạch dưới.
+- Password đăng ký: 8–72 ký tự, có ít nhất một chữ cái và một chữ số; không trim và tối đa 72 byte UTF-8 cho BCrypt.
+- Đăng nhập kiểm tra username/password không rỗng và tối đa 72 byte cho password, không áp lại chính sách độ mạnh khi đăng ký.
+
+# Chạy test
+
+Automated API tests dùng H2 tạm thời, không cần khởi động SQL Server:
 
 ```powershell
 mvn test
 ```
 
-Project hiện chưa có automated test cases; lệnh trên chạy Maven test phase. Để kiểm tra luồng ứng dụng, có thể dùng giao diện hoặc chạy các lệnh PowerShell sau khi ứng dụng đã khởi động. Tài khoản `demo` đã được tạo bởi seed script:
+Test bao phủ đăng ký hợp lệ/không hợp lệ, chuẩn hóa username, giới hạn BCrypt, username trùng, đăng nhập sai, token thiếu/sai và API hồ sơ/danh sách với token hợp lệ.
+
+# Thử API thủ công
+
+Sau khi chạy ứng dụng và nạp seed database, đăng nhập tài khoản mẫu rồi gọi hai endpoint được bảo vệ:
 
 ```powershell
 $login = Invoke-RestMethod -Uri 'http://localhost:8005/auth/login' -Method Post -ContentType 'application/json' -Body (@{ username = 'demo'; password = 'JwtDemo123!' } | ConvertTo-Json)
-$token = $login.token
-Invoke-RestMethod -Uri 'http://localhost:8005/users/me' -Headers @{ Authorization = "Bearer $token" }
-Invoke-RestMethod -Uri 'http://localhost:8005/users' -Headers @{ Authorization = "Bearer $token" }
+$token = $login.data.token
+$profile = Invoke-RestMethod -Uri 'http://localhost:8005/users/me' -Headers @{ Authorization = "Bearer $token" }
+$profile.data
+$users = Invoke-RestMethod -Uri 'http://localhost:8005/users' -Headers @{ Authorization = "Bearer $token" }
+$users.data
 ```
 
-Để kiểm tra đăng ký, gửi POST `/auth/register` với JSON `{"username":"newuser","password":"Newpass123!"}`, sau đó đăng nhập bằng tài khoản vừa tạo. Gọi `/users/me` không có token để xác nhận API bảo vệ trả về HTTP 401.
+Đăng ký tài khoản mới qua `POST /auth/register` với JSON `{"username":"newuser","password":"Newpass123!"}`. Gọi `/users/me` không có token để xem response lỗi 401 theo cùng envelope.

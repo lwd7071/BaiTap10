@@ -1,15 +1,18 @@
 package vn.edu.jwtjjwt.auth;
 
+import vn.edu.jwtjjwt.api.ApiResponse;
+import vn.edu.jwtjjwt.api.DuplicateUsernameException;
 import vn.edu.jwtjjwt.security.JwtService;
-import vn.edu.jwtjjwt.user.*;
-import java.util.Map;
+import vn.edu.jwtjjwt.user.UserRepository;
+import jakarta.validation.Valid;
+import java.util.Date;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("/auth")
@@ -22,19 +25,26 @@ public class AuthController {
     public AuthController(UserRepository users, PasswordEncoder encoder, AuthenticationManager authenticationManager, UserDetailsService userDetailsService, JwtService jwtService) {
         this.users = users; this.encoder = encoder; this.authenticationManager = authenticationManager; this.userDetailsService = userDetailsService; this.jwtService = jwtService;
     }
-    @PostMapping("/register") public Map<String, Object> register(@RequestBody Credentials body) {
-        if (body.username() == null || body.username().isBlank() || body.password() == null || body.password().length() < 6)
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tên đăng nhập không được trống; mật khẩu cần ít nhất 6 ký tự");
-        if (users.existsByUsername(body.username())) throw new ResponseStatusException(HttpStatus.CONFLICT, "Tên đăng nhập đã tồn tại");
-        var created = users.save(new UserAccount(body.username().trim(), encoder.encode(body.password()), "USER"));
-        return Map.of("id", created.getId(), "username", created.getUsername(), "message", "Tạo tài khoản thành công");
+
+    @PostMapping("/register")
+    public ResponseEntity<ApiResponse<RegisterResponse>> register(@Valid @RequestBody RegisterRequest body) {
+        String username = UsernameNormalizer.normalize(body.username());
+        if (users.existsByUsername(username)) throw new DuplicateUsernameException();
+        var created = users.save(new vn.edu.jwtjjwt.user.UserAccount(username, encoder.encode(body.password()), "USER"));
+        var data = new RegisterResponse(created.getId(), created.getUsername());
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("Tạo tài khoản thành công", data));
     }
-    @PostMapping("/login") public TokenResponse login(@RequestBody Credentials body) {
-        authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(body.username(), body.password()));
-        var user = userDetailsService.loadUserByUsername(body.username());
+
+    @PostMapping("/login")
+    public ApiResponse<TokenResponse> login(@Valid @RequestBody LoginRequest body) {
+        String username = UsernameNormalizer.normalize(body.username());
+        authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(username, body.password()));
+        var user = userDetailsService.loadUserByUsername(username);
         String token = jwtService.generateToken(user);
-        return new TokenResponse(token, "Bearer", jwtService.getExpiration(token).getTime());
+        var data = new TokenResponse(token, "Bearer", jwtService.getExpiration(token).getTime());
+        return ApiResponse.success("Đăng nhập thành công", data);
     }
-    public record Credentials(String username, String password) {}
+
+    public record RegisterResponse(Long id, String username) {}
     public record TokenResponse(String token, String tokenType, long expiresAt) {}
 }
