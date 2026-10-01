@@ -34,6 +34,12 @@ Mọi endpoint API trả cùng envelope; dữ liệu thành công nằm trong `d
 
 Khi lỗi, `success` là `false`, `data` là `null`, còn `errors` chứa `field` và `message`. Status chính: `400` input không hợp lệ, `401` sai thông tin đăng nhập hoặc token, `403` không đủ quyền, `409` username bị trùng.
 
+Exception trong API được ánh xạ tập trung về envelope này; lỗi máy chủ ngoài dự kiến trả thông báo chung, không gửi stack trace hay nội dung database về client. Mỗi request được log với timestamp, mức độ, HTTP method, path, status và correlation ID. ID được trả trong header `X-Correlation-ID` (client có thể gửi ID hợp lệ để tiện tra cứu). Không ghi password, token JWT hay nội dung request vào log. Log console dùng Logback có sẵn của Spring Boot; chưa cấu hình dịch vụ thu thập log ngoài.
+
+## API Docs
+
+Cả hai project sinh OpenAPI tự động và cung cấp Swagger UI để xem/thử endpoint. Khi ứng dụng đang chạy, mở `http://localhost:8005/swagger-ui/index.html`; hướng dẫn gọi API và xác thực Bearer nằm trong [docs/API.md](docs/API.md). Tệp OpenAPI JSON được cung cấp tại `/v3/api-docs`.
+
 ## Quy tắc input
 
 - Username đăng ký được trim, chuyển thành chữ thường, dài 3–30 ký tự; chỉ chấp nhận chữ ASCII, số, dấu chấm và gạch dưới.
