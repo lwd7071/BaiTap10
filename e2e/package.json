@@ -1,0 +1,12 @@
+{
+  "name": "jwt-ui-e2e",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node run-e2e.mjs",
+    "test:variant": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0"
+  }
+}

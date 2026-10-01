@@ -43,6 +43,22 @@ class BackendApiTest {
         users.save(new UserAccount("demo", passwordEncoder.encode("JwtDemo123!"), "USER"));
     }
 
+    @Test void thymeleafPagesAndFrontendAssetsAreServed() throws Exception {
+        mvc.perform(get("/"))
+            .andExpect(status().is3xxRedirection())
+            .andExpect(header().string("Location", "/login"));
+        mvc.perform(get("/login"))
+            .andExpect(status().isOk())
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"login-form\"")))
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"register-form\"")));
+        mvc.perform(get("/user/profile"))
+            .andExpect(status().isOk())
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"profile-page\"")));
+        mvc.perform(get("/css/style.css")).andExpect(status().isOk());
+        mvc.perform(get("/js/mainjs.js")).andExpect(status().isOk());
+        mvc.perform(get("/webjars/jquery/3.7.1/jquery.min.js")).andExpect(status().isOk());
+    }
+
     @Test void registrationNormalizesUsernameAndUsesSuccessEnvelope() throws Exception {
         mvc.perform(post("/auth/register").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"username\":\"  Student_1 \",\"password\":\"StrongPass123\"}"))
