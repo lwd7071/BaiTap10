@@ -17,7 +17,7 @@ public class SecurityConfig {
     @Bean SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationFilter jwtFilter, ApiAuthenticationEntryPoint authenticationEntryPoint, ApiAccessDeniedHandler accessDeniedHandler) throws Exception {
         return http.csrf(csrf -> csrf.disable())
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(auth -> auth.requestMatchers("/", "/login.html", "/profile.html", "/css/**", "/js/**", "/auth/**", "/error").permitAll().anyRequest().authenticated())
+            .authorizeHttpRequests(auth -> auth.requestMatchers("/", "/login", "/user/profile", "/css/**", "/js/**", "/webjars/**", "/auth/**", "/error").permitAll().anyRequest().authenticated())
             .exceptionHandling(ex -> ex.authenticationEntryPoint(authenticationEntryPoint).accessDeniedHandler(accessDeniedHandler))
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class).build();
     }

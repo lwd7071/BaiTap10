@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f4f7fb">
+  <title>Hồ sơ xác thực | JWT Lab</title>
+  <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body class="profile-page" id="profile-page">
+  <header class="topbar">
+    <a class="brand" th:href="@{/user/profile}" aria-label="JWT Lab, hồ sơ">
+      <span class="brand-mark" aria-hidden="true">J</span><span>JWT <b>LAB</b></span>
+    </a>
+    <div class="topbar-actions"><span class="session-label"><span id="auth-status-dot" class="status-dot is-pending" aria-hidden="true"></span><span id="auth-status" role="status">Đang kiểm tra Bearer token</span></span><button id="logout" class="button button-outline" type="button">Đăng xuất</button></div>
+  </header>
+  <main class="dashboard">
+    <section class="page-intro">
+      <div><p class="eyebrow">KHU VỰC ĐƯỢC BẢO VỆ</p><h1>Hồ sơ xác thực</h1><p class="lead">Dữ liệu bên dưới được tải từ API bằng Bearer token của bạn.</p></div>
+      <span class="method-chip">STATELESS AUTH</span>
+    </section>
+    <section class="dashboard-grid" aria-label="Thông tin xác thực">
+      <article class="surface profile-card" aria-labelledby="profile-title">
+        <div class="section-heading"><div><p class="eyebrow">TÀI KHOẢN</p><h2 id="profile-title">Thông tin của bạn</h2></div><span class="status-pill"><span class="status-dot" aria-hidden="true"></span> Đã xác thực</span></div>
+        <div id="profile-loading" class="loading-state" role="status">Đang tải hồ sơ…</div>
+        <dl id="profile-details" class="profile-details" hidden>
+          <div><dt>Tên đăng nhập</dt><dd id="profile-username">—</dd></div>
+          <div><dt>Mã người dùng</dt><dd id="profile-id">—</dd></div>
+          <div><dt>Vai trò</dt><dd id="profile-role">—</dd></div>
+          <div><dt>Hạn token</dt><dd id="token-expiry">—</dd></div>
+        </dl>
+        <p id="profile-error" class="form-message" role="alert" aria-live="assertive"></p>
+      </article>
+      <aside class="surface request-card" aria-labelledby="request-title">
+        <p class="eyebrow">BEARER AUTHENTICATION</p><h2 id="request-title">Token đi cùng request</h2>
+        <p class="request-copy">Ứng dụng gửi token trong header khi yêu cầu tài nguyên được bảo vệ.</p>
+        <div class="code-sample"><span>Authorization</span><code>Bearer ••••••••••••</code></div>
+        <div class="endpoint-list"><span>API đang dùng</span><code>GET /users/me</code><code>GET /users</code></div>
+      </aside>
+    </section>
+    <section class="surface users-section" aria-labelledby="users-title">
+      <div class="section-heading users-heading"><div><p class="eyebrow">TÀI NGUYÊN API</p><h2 id="users-title">Danh sách người dùng</h2><p class="section-description">Endpoint này yêu cầu JWT hợp lệ.</p></div><button id="users-button" class="button button-primary" type="button"><span class="button-label">Tải danh sách</span><span class="button-wait" aria-hidden="true">Đang tải…</span></button></div>
+      <p id="users-message" class="form-message" role="status" aria-live="polite"></p>
+      <div id="users-table-wrap" class="table-wrap" hidden>
+        <table><caption class="visually-hidden">Danh sách người dùng trả về từ API GET /users</caption><thead><tr><th scope="col">Mã</th><th scope="col">Tên đăng nhập</th><th scope="col">Vai trò</th></tr></thead><tbody id="users-body"></tbody></table>
+      </div>
+      <div id="users-empty" class="empty-state" hidden>Chưa có người dùng nào để hiển thị.</div>
+    </section>
+    <footer class="dashboard-footer">JWT Lab <span>·</span> Bài thực hành Spring Boot Security 6</footer>
+  </main>
+  <script th:src="@{/webjars/jquery/3.7.1/jquery.min.js}"></script>
+  <script th:src="@{/js/mainjs.js}"></script>
+</body>
+</html>
