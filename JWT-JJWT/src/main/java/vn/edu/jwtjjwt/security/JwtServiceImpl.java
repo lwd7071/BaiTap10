@@ -21,7 +21,14 @@ public class JwtServiceImpl implements JwtService {
         return Jwts.builder().subject(user.getUsername()).issuedAt(now).expiration(new Date(now.getTime() + expirationMs)).signWith(key).compact();
     }
     @Override public String extractUsername(String token) { return claims(token).getSubject(); }
-    @Override public boolean isTokenValid(String token, UserDetails user) { var claims = claims(token); return claims.getSubject().equals(user.getUsername()) && claims.getExpiration().after(new Date()); }
+    @Override public boolean isTokenValid(String token, UserDetails user) {
+        try {
+            var claims = claims(token);
+            return claims.getSubject().equals(user.getUsername()) && claims.getExpiration().after(new Date());
+        } catch (RuntimeException invalidToken) {
+            return false;
+        }
+    }
     @Override public Date getExpiration(String token) { return claims(token).getExpiration(); }
     private io.jsonwebtoken.Claims claims(String token) { return Jwts.parser().verifyWith(key).build().parseSignedClaims(token).getPayload(); }
 }

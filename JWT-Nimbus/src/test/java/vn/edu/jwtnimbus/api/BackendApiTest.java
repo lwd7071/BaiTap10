@@ -69,6 +69,43 @@ class BackendApiTest {
             .andExpect(jsonPath("$.success").value(false));
     }
 
+    @Test void registrationAcceptsUsernameAndPasswordAtTheirBoundaries() throws Exception {
+        String username = "a".repeat(30);
+        String password = "A1" + "x".repeat(70);
+        mvc.perform(post("/auth/register").contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(new Credentials(username, password))))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.data.username").value(username));
+
+        mvc.perform(post("/auth/register").contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(new Credentials("a".repeat(31), "StrongPass123"))))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.errors[0].field").value("username"));
+
+        mvc.perform(post("/auth/register").contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(new Credentials("shortpass", "A1" + "x".repeat(71)))))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.errors[0].field").value("password"));
+    }
+
+    @Test void loginDoesNotReapplyRegistrationPasswordStrengthPolicyOrTrimPassword() throws Exception {
+        users.save(new UserAccount("legacy_user", passwordEncoder.encode("short1"), "USER"));
+        mvc.perform(post("/auth/login").contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(new Credentials("legacy_user", "short1"))))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.token").isNotEmpty());
+
+        mvc.perform(post("/auth/register").contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(new Credentials("spaced_pass", "Abc12345 "))))
+            .andExpect(status().isCreated());
+        mvc.perform(post("/auth/login").contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(new Credentials("spaced_pass", "Abc12345 "))))
+            .andExpect(status().isOk());
+        mvc.perform(post("/auth/login").contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(new Credentials("spaced_pass", "Abc12345"))))
+            .andExpect(status().isUnauthorized());
+    }
+
     @Test void duplicateUsernameUsesConflictEnvelope() throws Exception {
         mvc.perform(post("/auth/register").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"username\":\" DEMO \",\"password\":\"StrongPass123\"}"))

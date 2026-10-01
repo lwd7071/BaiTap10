@@ -29,7 +29,14 @@ public class JwtServiceImpl implements JwtService {
         try { return parseAndVerify(token).getJWTClaimsSet().getSubject(); }
         catch (java.text.ParseException e) { throw new IllegalArgumentException("JWT không hợp lệ", e); }
     }
-    @Override public boolean isTokenValid(String token, UserDetails user) { var jwt = parseAndVerify(token); try { return jwt.getJWTClaimsSet().getSubject().equals(user.getUsername()) && jwt.getJWTClaimsSet().getExpirationTime().after(new Date()); } catch (java.text.ParseException e) { return false; } }
+    @Override public boolean isTokenValid(String token, UserDetails user) {
+        try {
+            var claims = parseAndVerify(token).getJWTClaimsSet();
+            return claims.getSubject().equals(user.getUsername()) && claims.getExpirationTime().after(new Date());
+        } catch (java.text.ParseException | RuntimeException invalidToken) {
+            return false;
+        }
+    }
     @Override public Date getExpiration(String token) { try { return parseAndVerify(token).getJWTClaimsSet().getExpirationTime(); } catch (java.text.ParseException e) { throw new IllegalArgumentException("JWT không hợp lệ", e); } }
     private SignedJWT parseAndVerify(String token) {
         try {
